@@ -14,7 +14,7 @@ pipeline{
         }
         stage('Image Tag'){
             steps{
-                sh 'docker tag generativeaitest:${BUILD_NUMBER} 858280339305.dkr.ecr.us-east-2.amazonaws.com/generativeaitest:${BUILD_NUMBER}'
+                sh 'docker tag generativeaitest:${BUILD_NUMBER} 858280339305.dkr.ecr.us-east-2.amazonaws.com /generativeaitest:${BUILD_NUMBER}'
             }
         }
         stage('Docker push'){
