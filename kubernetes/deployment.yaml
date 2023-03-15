@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      containers:
+      - name: backend-api
+        image: "858280339305.dkr.ecr.us-east-2.amazonaws.com/imagine-studio-prod-backend:latest"
+        command: ["uvicorn"]
+        args: ["app.main:app", "--proxy-headers", "--host", "0.0.0.0","--port", "8000", "--root-path", "/backend"]
+        volumeMounts:
+          - name: cloudfront
+            mountPath: /etc/certs/cloudfrontsigner
+        env:
+          - name: DATABASE_URL
+            valueFrom:
+                secretKeyRef:
+                  name: backendcreds
+                  key: DATABASE_URL
+          - name: S3_ACCESS_KEY
+            valueFrom:
+                secretKeyRef:
+                  name: backendcreds
+                  key: S3_ACCESS_KEY
+          - name: S3_ACCESS_SECRET
+            valueFrom:
+                secretKeyRef:
+                  name: backendcreds
+                  key: S3_ACCESS_SECRET
+          - name: BUCKET_NAME
+            valueFrom:
+                secretKeyRef:
+                  name: backendcreds
+                  key: BUCKET_NAME
+          - name: CLOUD_FRONT_KEY_ID
+            valueFrom:
+                secretKeyRef:
+                  name: backendcreds
+                  key: CLOUD_FRONT_KEY_ID
+
+          - name: SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: backendcreds
+                key: SECRET_KEY
+          - name: PRIVATE_KEY_PATH
+            value: "/etc/certs/cloudfrontsigner/private_key.pem"
+          - name: DEBUG
+            value: "FALSE"
+          - name: CLOUD_FRONT_URL
+            value: "https://d25o022f3s68u4.cloudfront.net"
+          - name: S3_AVATAR_FOLDER
+            value: "user-avatars"
+          - name: S3_SELFIES_FOLDER
+            value: "user-selfies"
+          - name: S3_REGION
+            value: "us-east-2"
+          - name: PORT
+            value: "8000"
+          - name: DS_API_URL
+            value: "https://prod.imaginestudio.app/ds/dreambooth"
+          - name: PROCESSING_TIME
+            value: "1200"
+          - name: CLOUD_FRONT_URL_EXPIRY_TIME_DELTA
+            value: "900"
+
+            ##### Not needed as we moved away from celery on backend
+          - name: CELERY_BROKER_URL
+            value: "amqp://guest:guest@localhost:5672//"
+          - name: CELERY_RESULT_BACKEND
+            value: "rpc://"
+          - name: TOTAL_DS_REPLICAS
+            value: "10"
+          - name: CELERY_WORKER_WAIT_TIME
+            value: "20"
+
+        
+        resources:
+            requests:
+              cpu: 200m
+              memory: 3Gi
+        ports:
+        - containerPort: 8000
+
+      volumes:
+        - name: cloudfront
+          configMap:
+            name: cloudfrontsignernew
+      
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8000
+  selector:
+    app: backend-api
+
+
